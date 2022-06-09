@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using Signalr.Hubs;
 using Signalr.Models;
 using Signalr.ViewModels;
 using System;
@@ -16,13 +18,17 @@ namespace Signalr.Controllers
         private readonly ILogger<HomeController> _logger;
         private readonly UserManager<AppUser> _userManager;
         private readonly SignInManager<AppUser> _signInManager;
+        private readonly IHubContext<ChatHub> _hubContext;
 
-        public HomeController(ILogger<HomeController> logger, UserManager<AppUser> userManager, 
-            SignInManager<AppUser> signInManager)
+        public HomeController(ILogger<HomeController> logger, 
+            UserManager<AppUser> userManager, 
+            SignInManager<AppUser> signInManager,
+             IHubContext<ChatHub> hubContext)
         {
             _logger = logger;
             _userManager = userManager;
             _signInManager = signInManager;
+            _hubContext = hubContext;
         }
 
         public IActionResult Index()
@@ -90,5 +96,26 @@ namespace Signalr.Controllers
             var result4 = _userManager.CreateAsync(user4, "User@123").Result;
             return Content("userler created");
         }
+
+        public async Task<IActionResult> Logout()
+        {
+             await _signInManager.SignOutAsync();
+
+            return RedirectToAction("index", "home");
+        }
+
+
+
+        public async Task<IActionResult> SendSpecificUser(string id)
+        {
+            AppUser user = await _userManager.FindByIdAsync(id);
+            await _hubContext.Clients.Client(user.ConnectionId).SendAsync("send", user.Fullname);
+
+            return View();
+            
+
+
+        }
     }
+
 }
